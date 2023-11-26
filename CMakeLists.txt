@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.26)
 project(Tracking)
 
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
+
 set(CMAKE_CXX_STANDARD 23)
 
 
@@ -14,7 +17,4 @@ add_executable(Tracking
 )
 
 
-
-
-
-
+target_link_libraries(Tracking ${OpenCV_LIBS})

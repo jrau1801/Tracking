@@ -208,15 +208,15 @@ void hog(const Eigen::MatrixXd &image,
 }
 
 
-int main() {
-
-    Eigen::MatrixXd image(5, 5);
-    image << 1, 2, 3, 4, 5,
-            6, 7, 8, 9, 10,
-            11, 12, 13, 14, 15,
-            16, 17, 18, 19, 20,
-            21, 22, 23, 24, 25;
-    hog(image);
+//int main() {
+//
+//    Eigen::MatrixXd image(5, 5);
+//    image << 1, 2, 3, 4, 5,
+//            6, 7, 8, 9, 10,
+//            11, 12, 13, 14, 15,
+//            16, 17, 18, 19, 20,
+//            21, 22, 23, 24, 25;
+//    hog(image);
 
 //    // Example usage of hog_normalize_block
 //    Eigen::MatrixXd block(3, 3);
@@ -242,5 +242,5 @@ int main() {
 //    std::cout << "Gradient Row:\n" << g_row << std::endl;
 //    std::cout << "Gradient Column:\n" << g_col << std::endl;
 
-    return 0;
-}
+//    return 0;
+//}
