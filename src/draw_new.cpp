@@ -56,6 +56,7 @@ std::pair<std::vector<int>, std::vector<int>> _draw_lines(int start_row, int sta
     rows_array[delta_col] = end_row;
     cols_array[delta_col] = end_col;
 
+
     return std::make_pair(rows_array, cols_array);
 }
 
@@ -64,17 +65,17 @@ std::pair<std::vector<int>, std::vector<int>> line(int r0, int c0, int r1, int c
 }
 
 
-/*int main() {
-    // Example usage
-    int r0 = 1, c0 = 1, r1 = 6, c1 = 4;
-    auto result = line(r0, c0, r1, c1);
-    std::vector<int> rows = result.first;
-    std::vector<int> cols = result.second;
-
-    // Displaying the result
-    for (size_t i = 0; i < rows.size(); ++i) {
-        std::cout << "(" << rows[i] << ", " << cols[i] << ")" << std::endl;
-    }
-
-    return 0;
-}*/
+//int main() {
+//    // Example usage
+//    int r0 = 1, c0 = 1, r1 = 6, c1 = 4;
+//    auto result = line(r0, c0, r1, c1);
+//    std::vector<int> rows = result.first;
+//    std::vector<int> cols = result.second;
+//
+//    // Displaying the result
+//    for (size_t i = 0; i < rows.size(); ++i) {
+//        std::cout << "(" << rows[i] << ", " << cols[i] << ")" << std::endl;
+//    }
+//
+//    return 0;
+//}

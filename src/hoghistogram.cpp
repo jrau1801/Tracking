@@ -2,6 +2,7 @@
 #include <vector>
 #include <cmath>
 #include "../include/hoghistogram.h"
+#include <opencv2/opencv.hpp>
 
 // Function to compute cell_hog
 double cell_hog(const std::vector<std::vector<double>>& magnitude,
@@ -51,7 +52,7 @@ void hog_histograms(const std::vector<std::vector<double>>& g_col,
     for (int i = 0; i < s_row; ++i) {
         for (int j = 0; j < s_col; ++j) {
             magnitude[i][j] = std::hypot(g_col[i][j], g_row[i][j]);
-            orientation[i][j] = std::fmod(std::atan2(g_row[i][j], g_col[i][j]) * 180.0 / M_PI, 180.0);
+            orientation[i][j] = std::fmod(std::atan2(g_row[i][j], g_col[i][j]) * 180.0 / CV_PI, 180.0);
         }
     }
 

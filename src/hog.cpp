@@ -2,6 +2,8 @@
 #include "../libs/Eigen/Dense"
 #include "../include/hoghistogram.h"
 #include "../include/draw_new.h"
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
 
 // Function to convert Eigen::MatrixXd to const std::vector<std::vector<double>>&
 const std::vector<std::vector<double>> &EigenMatrixToVector(const Eigen::MatrixXd &matrix) {
@@ -63,14 +65,14 @@ std::pair<Eigen::MatrixXd, Eigen::MatrixXd> hog_channel_gradient(const Eigen::Ma
     return {g_row, g_col};
 }
 
-void hog(const Eigen::MatrixXd &image,
-         int orientations = 9,
-         std::pair<int, int> pixels_per_cell = std::make_pair(5, 5),
-         std::pair<int, int> cells_per_block = std::make_pair(1, 1),
-         std::string block_norm = "L2-Hys",
-         bool visualize = false,
-         bool transform_sqrt = false,
-         bool feature_vector = true) {
+cv::Mat hog(const Eigen::MatrixXd &image,
+            int orientations = 9,
+            std::pair<int, int> pixels_per_cell = std::make_pair(8, 8),
+            std::pair<int, int> cells_per_block = std::make_pair(3, 3),
+            std::string block_norm = "L2-Hys",
+            bool visualize = false,
+            bool transform_sqrt = true,
+            bool feature_vector = true) {
 
     Eigen::MatrixXd transformed_image = image;
     if (transform_sqrt) {
@@ -129,7 +131,7 @@ void hog(const Eigen::MatrixXd &image,
 
     std::vector<double> orientation_bin_midpoints(orientations);
     for (int i = 0; i < orientations; ++i) {
-        orientation_bin_midpoints[i] = M_PI * (i + 0.5) / orientations;
+        orientation_bin_midpoints[i] = CV_PI * (i + 0.5) / orientations;
     }
 
     std::vector<double> dr_arr(orientations);
@@ -140,7 +142,8 @@ void hog(const Eigen::MatrixXd &image,
     }
 
 
-    std::vector<std::vector<double>> hog_image(s_row, std::vector<double>(s_col, 0.0));
+    Eigen::MatrixXd hog_image(s_row, s_col);
+    hog_image.setZero(); // Initialize the matrix with zeros
 
     for (int r = 0; r < n_cells_row; ++r) {
         for (int c = 0; c < n_cells_col; ++c) {
@@ -151,6 +154,7 @@ void hog(const Eigen::MatrixXd &image,
 
                 std::pair<double, double> centre = std::make_pair(r * c_row + c_row / 2, c * c_col + c_col / 2);
 
+
                 // Assuming `line` returns a pair of integers as rr and cc
                 auto lines = line(
                         static_cast<int>(centre.first - dc),
@@ -159,51 +163,33 @@ void hog(const Eigen::MatrixXd &image,
                         static_cast<int>(centre.second - dr)
                 );
 
+
                 auto &rows_array = lines.first;
                 auto &cols_array = lines.second;
 
-                for (size_t i = 0; i < rows_array.size(); ++i) {
-                    int rr = rows_array[i];
-                    int cc = cols_array[i];
+                for (int g = 0; g < rows_array.size(); ++g) {
+                    int rr = rows_array[g];
+                    int cc = cols_array[g];
 
                     // Ensure rr and cc are within bounds before accessing hog_image
                     if (rr >= 0 && rr < s_row && cc >= 0 && cc < s_col) {
-                        hog_image[rr][cc] += orientation_histogram[r][c][o];
+                        hog_image(rr, cc) += orientation_histogram[r][c][o];
                     }
-
                 }
             }
         }
     }
 
-    // Printing the contents of the 2D vector
-    for (int i = 0; i < s_row; ++i) {
-        for (int j = 0; j < s_col; ++j) {
-            std::cout << hog_image[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }
 
     int n_blocks_row = (n_cells_row - b_row) + 1;
     int n_blocks_col = (n_cells_col - b_col) + 1;
 
 
+    cv::Mat finished_hog;
 
-    std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> normalized_blocks(
-            n_blocks_row,
-            std::vector<std::vector<std::vector<std::vector<double>>>>(
-                    n_blocks_col,
-                    std::vector<std::vector<std::vector<double>>>(
-                            b_row,
-                            std::vector<std::vector<double>>(
-                                    b_col,
-                                    std::vector<double>(orientations, 0.0)
-                            )
-                    )
-            )
-    );
+    cv::eigen2cv(hog_image, finished_hog);
 
-
+    return finished_hog;
 
 }
 
@@ -237,10 +223,10 @@ void hog(const Eigen::MatrixXd &image,
 //    Eigen::MatrixXd g_row = gradient.first;
 //    Eigen::MatrixXd g_col = gradient.second;
 
-    // Output or further processing...
+// Output or further processing...
 //    std::cout << "Normalized Block:\n" << normalized_block << std::endl;
 //    std::cout << "Gradient Row:\n" << g_row << std::endl;
 //    std::cout << "Gradient Column:\n" << g_col << std::endl;
-
+//
 //    return 0;
 //}
