@@ -6,6 +6,7 @@ set(OpenCV_DIR "C:/tools/opencv/build")
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+
 set(CMAKE_CXX_STANDARD 23)
 
 

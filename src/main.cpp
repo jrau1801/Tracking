@@ -2,6 +2,8 @@
 #include "../include/hog.h"
 #include <opencv2/core/eigen.hpp>
 #include "../libs/Eigen/Dense"
+#include <chrono>
+using namespace std::chrono;
 
 using std::cerr;
 using cv::Mat;
@@ -33,7 +35,7 @@ void printEigenMatrix(const Eigen::MatrixXd &matrix) {
 
 int main() {
 
-    Mat image = cv::imread(R"(C:\Users\janra\CLionProjects\Tracking\images\frame_15344.jpg)");
+    Mat image = cv::imread(R"(/Users/Louis/CLionProjects/Tracking/images/frame_15344.jpg)");
 
     if (image.empty()) {
         cerr << "Error: Couldn't load the image!" << std::endl;
@@ -41,22 +43,22 @@ int main() {
     }
 
     cv::Mat grayImage;
+    cv::Mat grayImage64;
     cv::cvtColor(image, grayImage, cv::COLOR_BGR2GRAY);
 
-    Eigen::MatrixXd converted_image;
-
-    cv::cv2eigen(grayImage, converted_image);
-
+    grayImage.convertTo(grayImage64, CV_64F);
 
     int orientations = 9;
     std::pair<int, int> pixels_per_cell = std::make_pair(8, 8);
-    std::pair<int, int> cells_per_block = std::make_pair(3, 3);
+    std::pair<int, int> cells_per_block = std::make_pair(2, 2);
     std::string block_norm = "L2-Hys";
-    bool visualize = false;
+    bool visualize = true;
     bool transform_sqrt = true;
     bool feature_vector = true;
 
-    cv::Mat finished_hog_image = hog(converted_image,
+
+    auto start = high_resolution_clock::now();
+    auto res = hog(grayImage64,
         orientations,
         pixels_per_cell,
         cells_per_block,
@@ -65,9 +67,27 @@ int main() {
         transform_sqrt,
         feature_vector);
 
+    auto stop = high_resolution_clock::now();
+
+    auto duration = duration_cast<microseconds>(stop - start);
+
+    std::cout << "Time taken by function: "
+         << (duration.count()) << " microseconds" << std::endl;
+
+
+    std::cout << res.first.size << std::endl;
+    std::cout << res.second.size << std::endl;
+
+
+//    for (int i = 0; i < res.first.size[0]; ++i) {
+//           std::cout << res.first.at<double>(i) << " ";
+//    }
+
+//    std::cout << res.first << std::endl;
+
 
     namedWindow("Image", cv::WINDOW_NORMAL); // Create a resizable window
-    imshow("Image", finished_hog_image);
+    imshow("Image", res.second);
 
     // Wait for a key press
     waitKey(0);

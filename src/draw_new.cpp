@@ -2,7 +2,7 @@
 #include <vector>
 #include <cmath>
 
-std::pair<std::vector<int>, std::vector<int>> _draw_lines(int start_row, int start_col, int end_row, int end_col) {
+std::pair<std::vector<int>, std::vector<int>> draw_lines(int start_row, int start_col, int end_row, int end_col) {
     bool is_steep = false;
     int current_row = start_row;
     int current_col = start_col;
@@ -61,21 +61,5 @@ std::pair<std::vector<int>, std::vector<int>> _draw_lines(int start_row, int sta
 }
 
 std::pair<std::vector<int>, std::vector<int>> line(int r0, int c0, int r1, int c1) {
-    return _draw_lines(r0, c0, r1, c1);
+    return draw_lines(r0, c0, r1, c1);
 }
-
-
-//int main() {
-//    // Example usage
-//    int r0 = 1, c0 = 1, r1 = 6, c1 = 4;
-//    auto result = line(r0, c0, r1, c1);
-//    std::vector<int> rows = result.first;
-//    std::vector<int> cols = result.second;
-//
-//    // Displaying the result
-//    for (size_t i = 0; i < rows.size(); ++i) {
-//        std::cout << "(" << rows[i] << ", " << cols[i] << ")" << std::endl;
-//    }
-//
-//    return 0;
-//}
