@@ -115,16 +115,14 @@ std::pair<cv::Mat, cv::Mat> compute_gradients(const cv::Mat &inputImage) {
             -1, 0, 1);
 
     cv::Mat kernel_y = (cv::Mat_<double>(3, 3) << -1, -1, -1,
-            0,  0,  0,
-            1,  1,  1);
+            0, 0, 0,
+            1, 1, 1);
 
     cv::filter2D(inputImage, grad_x, -1, kernel_x);
     cv::filter2D(inputImage, grad_y, -1, kernel_y);
 
     return std::make_pair(grad_y, grad_x);
 }
-
-
 
 
 cv::Mat normalize_image(const Mat &image) {
@@ -267,35 +265,23 @@ std::pair<cv::Mat, Mat> hog(const Mat &image,
                 std::to_string(min_col) + " cols.");
     }
 
-    int total_blocks = orientation_histogram.rows * orientation_histogram.cols / orientations;
 
-// Reshape the orientation histogram to separate each block
-    cv::Mat normalized_blocks = orientation_histogram.reshape(1, total_blocks);
+    cv::Mat normalized_blocks;
 
-// Apply normalization to each block
-    for (int i = 0; i < total_blocks; ++i) {
-        cv::normalize(normalized_blocks.row(i), normalized_blocks.row(i), 1.0, 0.0, cv::NORM_L2, 6, cv::noArray());
+    for (int r = 0; r < n_blocks_row; ++r) {
+        for (int c = 0; c < n_blocks_col; ++c) {
+            cv::Rect blockRect(c * orientations, r, b_col * orientations, b_row);
+            cv::Mat block = orientation_histogram(blockRect);
+            cv::normalize(block, block, 1.0, 0.0, cv::NORM_L2, 6, cv::noArray());
+            normalized_blocks.push_back(block);
+        }
     }
-
-//
-//    Mat normalized_blocks;
-//
-//
-//
-//    for (int r = 0; r < n_blocks_row; ++r) {
-//        for (int c = 0; c < n_blocks_col; ++c) {
-//            // Calculate the block range in the orientation histogram
-//            Mat block = orientation_histogram.rowRange(r, r + b_row).colRange(c * orientations, (c + 1) * orientations);
-//
-//            normalized_blocks.push_back(normalizeBlock(block, method));
-//        }
-//    }
 
 
     if (flatten) {
-        Mat flattened_feature_vector = normalized_blocks.reshape(1);
+        normalized_blocks = normalized_blocks.reshape(1, 1);
+        cv::transpose(normalized_blocks, normalized_blocks);
     }
-
 
     return std::make_pair(normalized_blocks, hog_image);
 

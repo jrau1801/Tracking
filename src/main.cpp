@@ -42,9 +42,13 @@ int main() {
         return -1;
     }
 
+    Mat rImg;
+    cv::resize(image, rImg, cv::Size(), 0.25, 0.25);
+
+
     cv::Mat grayImage;
     cv::Mat grayImage64;
-    cv::cvtColor(image, grayImage, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(rImg, grayImage, cv::COLOR_BGR2GRAY);
 
     grayImage.convertTo(grayImage64, CV_64F);
 
@@ -52,7 +56,7 @@ int main() {
     std::pair<int, int> pixels_per_cell = std::make_pair(8, 8);
     std::pair<int, int> cells_per_block = std::make_pair(2, 2);
     std::string block_norm = "L2-Hys";
-    bool visualize = true;
+    bool visualize = false;
     bool transform_sqrt = true;
     bool feature_vector = true;
 
@@ -68,6 +72,8 @@ int main() {
         feature_vector);
 
     auto stop = high_resolution_clock::now();
+
+    std::cout << res.first.rows * res.first.cols << std::endl;
 
     auto duration = duration_cast<microseconds>(stop - start);
 
