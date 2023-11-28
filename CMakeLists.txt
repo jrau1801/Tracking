@@ -3,22 +3,21 @@ project(Tracking)
 add_definitions(-DOPENCV_DISABLE_EIGEN_TENSOR_SUPPORT)
 set(OpenCV_DIR "C:/tools/opencv/build")
 
+find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
-
+FIND_PACKAGE( Boost 1.40 COMPONENTS program_options REQUIRED )
+INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
 set(CMAKE_CXX_STANDARD 23)
 
 
 add_executable(Tracking
-        src/draw_new.cpp
-        src/hoghistogram.cpp
-        src/hog.cpp
         src/main.cpp
-        include/draw_new.h
-        include/hoghistogram.h
-        include/hog.h
+        include/Gradient.h
+        include/Line.h
+        include/HOG.h
 )
 
 
-target_link_libraries(Tracking ${OpenCV_LIBS})
+target_link_libraries(Tracking LINK_PUBLIC Eigen3::Eigen ${OpenCV_LIBS} ${Boost_LIBRARIES})
