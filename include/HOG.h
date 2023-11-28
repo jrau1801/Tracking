@@ -23,7 +23,7 @@ public:
                                                                                                                     8),
                                                                std::pair<int, int> cells_per_block = std::make_pair(3,
                                                                                                                     3),
-                                                               cv::NormTypes method = cv::NORM_L2,
+                                                               unsigned int method = cv::NORM_L2,
                                                                bool sobel = false,
                                                                bool visualize = false,
                                                                bool normalize_input = true,
