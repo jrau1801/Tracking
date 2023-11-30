@@ -85,7 +85,6 @@ double normalize(double value, double minVal, double maxVal) {
 Eigen::MatrixXd computeHOG(Eigen::MatrixXd image) {
     std::pair<Eigen::MatrixXd, Eigen::MatrixXd> res = HOG::compute(image, 9, std::make_pair(8, 8), std::make_pair(3, 3),
                                                                    cv::NORM_L2, false, false, true);
-
     return res.first;
 }
 
@@ -108,9 +107,9 @@ int main() {
     double detection_threshold = 0.9;
     float overlap_threshold = 0.3;
 
-
-    std::vector<cv::Rect> old_detections;
-    std::vector<double> old_scores;
+    int nextObjectID = 0;
+    std::map<int, cv::KalmanFilter> objectKalmanFilters;
+    std::map<int, cv::Rect> objectRects;
 
 
     while (true) {
@@ -119,46 +118,6 @@ int main() {
             break;
         }
 
-
-        // compute if old react are still valid
-//
-//        for (int i = 0; i < detections.size(); ++i) {
-//
-//            const cv::Rect &rect = detections.at(i);
-//
-//            Eigen::MatrixXd eigen_rect;
-//            cv::cv2eigen(frame(rect), eigen_rect);
-//
-//            Eigen::MatrixXd descriptors = computeHOG(eigen_rect);
-//
-//            cv::Mat descriptors_mat;
-//            cv::eigen2cv(descriptors, descriptors_mat);
-//
-//            descriptors_mat.convertTo(descriptors_mat, CV_32F);
-//
-//            cv::Mat descriptorsMatReshaped = descriptors_mat.reshape(1, 1);
-//
-//            cv::Mat predMat;
-//
-//            model->predict(descriptorsMatReshaped, predMat);
-//
-//            float pred = predMat.at<float>(0, 0);
-//
-//            if (pred == 1) { // if maybe human
-//                cv::Mat decisionMat;
-//                model->predict(descriptorsMatReshaped, decisionMat, cv::ml::StatModel::RAW_OUTPUT);
-//
-//                double decision = decisionMat.at<double>(0, 0);
-//
-//                decision = clip(normalize(decision, 1.56338e-314, 1.58213e-314), 0.0, 1.0);
-//
-//
-//                cout << decision << endl;
-//                if (decision > detection_threshold) {
-//                    detections.erase(detections.begin() + i);
-//                }
-//            }
-//        }
 
         // Perform person detection within the refined ROI
         output_frame = frame.clone();
@@ -173,11 +132,8 @@ int main() {
 
         std::vector<cv::Mat> pyramid = generateImagePyramid(frame, 8);
 
-
-        int pyi = 0;
         for (const auto &scaledFrame: pyramid) {
-            imshow("pyramid: " + pyi, scaledFrame);
-            pyi++;
+
             for (const auto &window: sliding_window(scaledFrame, size, stepSize)) {
 
                 Eigen::MatrixXd eigen_window;
@@ -224,32 +180,66 @@ int main() {
             scale++;
         }
 
-        for (const auto &oldRect: old_detections) {
-            // Check if old rectangles are still valid in the new detections
-            for (const auto &newRect: detections) {
-                // If there's a significant overlap between old and new rectangles,
-                // consider the old rectangle as still valid
-                cout << (oldRect & newRect).area() << endl;
-                if ((oldRect & newRect).area() > 50) {
-                    detections.push_back(oldRect);
-                    break;
-                }
-            }
-        }
-
-//        old_detections = detections;
-//        old_scores = scores;
-
-
-
         std::vector<cv::Rect> picked;
         picked = non_max_suppression(detections, scores, overlap_threshold);
 
-        for (const auto &rect: picked) {
-            cv::rectangle(output_frame, rect, cv::Scalar(0, 0, 255), 3);
-            cv::putText(output_frame, "Person", cv::Point(rect.x - 2, rect.y - 2), cv::FONT_HERSHEY_SIMPLEX, 2,
-                        cv::Scalar(0, 0, 255), 2);
+        // Update Kalman filters with new detections
+        for (size_t i = 0; i < picked.size(); ++i) {
+            const cv::Rect &rect = picked[i];
+            const double &score = scores[i]; // Retrieve the score corresponding to the rectangle
+
+            bool foundMatch = false;
+
+            // Check if the detected rect overlaps with existing objects
+            for (const auto &obj: objectRects) {
+                cv::Rect overlap = rect & obj.second;
+                if (overlap.area() > 0) {
+                    foundMatch = true;
+
+                    cv::KalmanFilter &kf = objectKalmanFilters[obj.first];
+                    cv::Mat measurement = (cv::Mat_<float>(2, 1) << rect.x + rect.width / 2, rect.y + rect.height / 2);
+                    cv::Mat prediction = kf.predict();
+                    cv::Mat estimated = kf.correct(measurement);
+
+                    cv::Rect estimatedRect(estimated.at<float>(0) - rect.width / 2,
+                                           estimated.at<float>(1) - rect.height / 2,
+                                           rect.width, rect.height);
+
+                    objectRects[obj.first] = estimatedRect;
+
+                    cv::rectangle(output_frame, estimatedRect, cv::Scalar(0, 255, 0), 2);
+                    cv::putText(output_frame, "ID: " + std::to_string(obj.first) + " Score: " + std::to_string(score),
+                                cv::Point(estimatedRect.x, estimatedRect.y - 5),
+                                cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0, 255, 0), 2);
+
+                    break;
+                }
+            }
+
+            if (!foundMatch) {
+                // Initialize Kalman filter for new object
+                cv::KalmanFilter kf(4, 2);
+                kf.transitionMatrix = (cv::Mat_<float>(4, 4) << 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1);
+                kf.measurementMatrix = (cv::Mat_<float>(2, 4) << 1, 0, 0, 0, 0, 1, 0, 0);
+                kf.processNoiseCov = cv::Mat::eye(4, 4, CV_32F) * 0.1;
+                kf.measurementNoiseCov = cv::Mat::eye(2, 2, CV_32F) * 0.01;
+                kf.statePost.at<float>(0) = rect.x + rect.width / 2;
+                kf.statePost.at<float>(1) = rect.y + rect.height / 2;
+                kf.statePost.at<float>(2) = 0;
+                kf.statePost.at<float>(3) = 0;
+
+                objectKalmanFilters[nextObjectID] = kf;
+                objectRects[nextObjectID] = rect;
+
+                cv::rectangle(output_frame, rect, cv::Scalar(0, 255, 0), 2);
+                cv::putText(output_frame, "ID: " + std::to_string(nextObjectID) + " Score: " + std::to_string(score),
+                            cv::Point(rect.x, rect.y - 5),
+                            cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0, 255, 0), 2);
+
+                nextObjectID++;
+            }
         }
+
 
         cv::imshow("Person Detection", output_frame);
         if (cv::waitKey(1) == 27) {
