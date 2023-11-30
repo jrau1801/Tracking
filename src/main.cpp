@@ -35,7 +35,7 @@ void printEigenMatrix(const Eigen::MatrixXd &matrix) {
 
 int main() {
 
-    Mat image = cv::imread(R"(/Users/Louis/CLionProjects/Tracking/images/frame_15344.jpg)");
+    Mat image = cv::imread(R"(../images/frame_15344.jpg)");
 
     if (image.empty()) {
         cerr << "Error: Couldn't load the image!" << std::endl;
@@ -43,7 +43,7 @@ int main() {
     }
 
     Mat rImg;
-    cv::resize(image, rImg, cv::Size(), 0.25, 0.25);
+    cv::resize(image, rImg, cv::Size(), 1, 1);
 
 
     cv::Mat grayImage;
@@ -56,7 +56,7 @@ int main() {
     std::pair<int, int> pixels_per_cell = std::make_pair(8, 8);
     std::pair<int, int> cells_per_block = std::make_pair(2, 2);
     std::string block_norm = "L2-Hys";
-    bool visualize = false;
+    bool visualize = true;
     bool transform_sqrt = true;
     bool feature_vector = true;
 
