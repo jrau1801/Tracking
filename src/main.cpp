@@ -8,6 +8,7 @@
 #include <opencv2/core/eigen.hpp>
 #include <vector>
 #include <numeric>
+#include <opencv2/bgsegm.hpp>
 
 #include "../include/HOG.h"
 
@@ -62,6 +63,16 @@ non_max_suppression(const std::vector<cv::Rect> &rects, const std::vector<double
     return picked;
 }
 
+std::vector<cv::Mat> generateImagePyramid(const cv::Mat &frame, const int numScales) {
+    std::vector<cv::Mat> pyramid;
+    cv::Mat scaledFrame = frame.clone();
+    for (int i = 0; i < numScales; ++i) {
+        pyramid.push_back(scaledFrame.clone());
+        cv::resize(scaledFrame, scaledFrame, cv::Size(), 0.75, 0.75); // Resizing with a scale factor of 0.75
+    }
+    return pyramid;
+}
+
 double clip(double value, double minValue, double maxValue) {
     return (value < minValue) ? minValue : (value > maxValue) ? maxValue : value;
 }
@@ -97,8 +108,10 @@ int main() {
     double detection_threshold = 0.9;
     float overlap_threshold = 0.3;
 
-    std::vector<cv::Rect> detections;
-    std::vector<double> scores;
+
+    std::vector<cv::Rect> old_detections;
+    std::vector<double> old_scores;
+
 
     while (true) {
         cap.read(frame);
@@ -147,6 +160,7 @@ int main() {
 //            }
 //        }
 
+        // Perform person detection within the refined ROI
         output_frame = frame.clone();
 
         cv::resize(frame, frame, cv::Size(), scale_factor, scale_factor, cv::INTER_AREA);
@@ -154,11 +168,17 @@ int main() {
         cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
 
         double scale = 0;
+        std::vector<cv::Rect> detections;
+        std::vector<double> scores;
+
+        std::vector<cv::Mat> pyramid = generateImagePyramid(frame, 8);
 
 
-        for (cv::Mat im_scaled = frame.clone(); im_scaled.rows >= size.height && im_scaled.cols >= size.width;
-             cv::resize(im_scaled, im_scaled, cv::Size(), 1.0 / downscale, 1.0 / downscale)) {
-            for (const auto &window: sliding_window(im_scaled, size, stepSize)) {
+        int pyi = 0;
+        for (const auto &scaledFrame: pyramid) {
+            imshow("pyramid: " + pyi, scaledFrame);
+            pyi++;
+            for (const auto &window: sliding_window(scaledFrame, size, stepSize)) {
 
                 Eigen::MatrixXd eigen_window;
                 cv::cv2eigen(frame(window), eigen_window);
@@ -186,8 +206,7 @@ int main() {
 
                     decision = clip(normalize(decision, 1.56338e-314, 1.58213e-314), 0.0, 1.0);
 
-
-                    cout << decision << endl;
+//                    cout << decision << endl;
                     if (decision > detection_threshold) {
                         double temp = pow(downscale, scale);
                         int x_orig = (int) (window.x * temp / scale_factor);
@@ -195,13 +214,33 @@ int main() {
                         int w_orig = (int) (size.width * temp / scale_factor);
                         int h_orig = (int) (size.height * temp / scale_factor);
 
+
                         detections.push_back(cv::Rect(x_orig, y_orig, w_orig, h_orig));
                         scores.push_back(decision);
+
                     }
                 }
             }
             scale++;
         }
+
+        for (const auto &oldRect: old_detections) {
+            // Check if old rectangles are still valid in the new detections
+            for (const auto &newRect: detections) {
+                // If there's a significant overlap between old and new rectangles,
+                // consider the old rectangle as still valid
+                cout << (oldRect & newRect).area() << endl;
+                if ((oldRect & newRect).area() > 50) {
+                    detections.push_back(oldRect);
+                    break;
+                }
+            }
+        }
+
+//        old_detections = detections;
+//        old_scores = scores;
+
+
 
         std::vector<cv::Rect> picked;
         picked = non_max_suppression(detections, scores, overlap_threshold);

@@ -15,6 +15,7 @@ add_executable(Tracking
         include/Line.h
         include/HOG.h
         src/train_svm.cpp
+        include/Detection.h
 )
 
 
