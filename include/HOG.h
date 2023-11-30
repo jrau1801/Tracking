@@ -7,6 +7,7 @@
 
 #include <Eigen/Dense>
 #include <opencv2/core/eigen.hpp>
+//#include <opencv2/core/parallel.hpp>
 #include "../include/Line.h"
 #include "../include/Gradient.h"
 
@@ -286,42 +287,45 @@ private:
         double number_of_orientations_per_180 = 180.0 / number_of_orientations;
 
         // Compute orientations integral images
-        for (int i = 0; i < number_of_orientations; ++i) {
-            double orientation_start = number_of_orientations_per_180 * (i + 1);
-            double orientation_end = number_of_orientations_per_180 * i;
-            int c = c_0;
-            int r = r_0;
-            int r_i = 0;
-            int c_i = 0;
+        cv::parallel_for_(cv::Range(0, number_of_orientations), [&](const cv::Range &range) {
+                              for (int i = range.start; i < range.end; ++i) {
+                                  double orientation_start = number_of_orientations_per_180 * (i + 1);
+                                  double orientation_end = number_of_orientations_per_180 * i;
+                                  int c = c_0;
+                                  int r = r_0;
+                                  int r_i = 0;
+                                  int c_i = 0;
 
-            while (r < cc) {
-                c_i = 0;
-                c = c_0;
+                                  while (r < cc) {
+                                      c_i = 0;
+                                      c = c_0;
 
-                while (c < cr) {
-                    // Perform calculations similar to 'cell_hog' function
-                    // using the relevant values from magnitude, orientation, etc.
-                    // Update orientation_histogram accordingly
+                                      while (c < cr) {
+                                          // Perform calculations similar to 'cell_hog' function
+                                          // using the relevant values from magnitude, orientation, etc.
+                                          // Update orientation_histogram accordingly
 
-                    orientation_histogram.at<double>(r_i, c_i * number_of_orientations + i) =
-                            calculateCell(magnitude, orientation, orientation_start, orientation_end,
-                                          cell_columns, cell_rows, c, r,
-                                          size_columns, size_rows,
-                                          range_rows_start, range_rows_stop,
-                                          range_columns_start, range_columns_stop);
+                                          orientation_histogram.at<double>(r_i, c_i * number_of_orientations + i) =
+                                                  calculateCell(magnitude, orientation, orientation_start, orientation_end,
+                                                                cell_columns, cell_rows, c, r,
+                                                                size_columns, size_rows,
+                                                                range_rows_start, range_rows_stop,
+                                                                range_columns_start, range_columns_stop);
 
-                    c_i += 1;
-                    c += cell_columns;
-                }
+                                          c_i += 1;
+                                          c += cell_columns;
+                                      }
 
-                r_i += 1;
-                r += cell_rows;
-            }
-        }
+                                      r_i += 1;
+                                      r += cell_rows;
+                                  }
+                              }
+                          }
+        );
+
     }
 
 
 };
-
 
 #endif //TRACKING_HOG_H
