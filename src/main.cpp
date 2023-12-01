@@ -63,12 +63,15 @@ non_max_suppression(const std::vector<cv::Rect> &rects, const std::vector<double
     return picked;
 }
 
-std::vector<cv::Mat> generateImagePyramid(const cv::Mat &frame, const int numScales) {
+std::vector<cv::Mat> generateImagePyramid(const cv::Mat &frame, const size_t numScales,const double downscale, const cv::Size minSize) {
     std::vector<cv::Mat> pyramid;
     cv::Mat scaledFrame = frame.clone();
     for (int i = 0; i < numScales; ++i) {
+        if (minSize.height > scaledFrame.rows || minSize.width > scaledFrame.cols) {
+            break;
+        }
         pyramid.push_back(scaledFrame.clone());
-        cv::resize(scaledFrame, scaledFrame, cv::Size(), 0.75, 0.75); // Resizing with a scale factor of 0.75
+        cv::resize(scaledFrame, scaledFrame, cv::Size(), 1/ downscale, 1/ downscale); // Resizing with a scale factor of 0.75}
     }
     return pyramid;
 }
@@ -96,48 +99,79 @@ int main() {
         return -1;
     }
 
-    cv::Mat frame, output_frame;
+    cv::Mat currentFrame, output_frame;
+//    cv::Mat flow, flowXY[2];
 
-    cv::Ptr<cv::ml::SVM> model = cv::ml::SVM::load(
-            "../models/svm_model_inria+tt_96_160_with_flipped.xml");
-    cv::Size size(96, 160);
-    cv::Size stepSize(10, 10);
-    double downscale = 1.5;
-    double scale_factor = 0.19;
-    double detection_threshold = 0.9;
-    float overlap_threshold = 0.3;
+
+    cv::Ptr<cv::ml::SVM> model_inria;
+    cv::Ptr<cv::ml::SVM> model_tt;
+    try {
+        model_inria = cv::ml::SVM::load(
+                "../models/svm_model_inria_96_160_with_flipped.xml");
+
+        model_tt = cv::ml::SVM::load(
+                "../models/svm_model_tt_96_160_with_flipped_1000.xml");
+    } catch (cv::Exception &e) {
+        std::cerr << "OpenCV error: " << e.what() << std::endl;
+    }
+
+    const cv::Size size(96, 160);
+    const cv::Size stepSize(8,8); //(10,10)
+    const double scale_factor = 0.21;
+    const double detection_threshold = 0.9;
+    const float overlap_threshold = 0.2;
+    const double downscale = 1.15;
+
+
+    const double gamma = 1.5; // Adjust gamma value as needed
+    const int blurKernelSize = 5; // Adjust blur kernel size as needed
 
     int nextObjectID = 0;
     std::map<int, cv::KalmanFilter> objectKalmanFilters;
     std::map<int, cv::Rect> objectRects;
 
-
     while (true) {
-        cap.read(frame);
-        if (frame.empty()) {
+        cap.read(currentFrame);
+        if (currentFrame.empty()) {
             break;
         }
 
 
-        // Perform person detection within the refined ROI
-        output_frame = frame.clone();
+        // Apply gamma correction to the currentFrame
+        cv::Mat gammaCorrectedFrame;
+        cv::Mat lookupTable(1, 256, CV_8U);
+        uchar *p = lookupTable.ptr();
+        for (int i = 0; i < 256; ++i) {
+            p[i] = cv::saturate_cast<uchar>(std::pow(i / 255.0, gamma) * 255.0);
+        }
+        cv::LUT(currentFrame, lookupTable, gammaCorrectedFrame);
 
-        cv::resize(frame, frame, cv::Size(), scale_factor, scale_factor, cv::INTER_AREA);
+        // Apply Gaussian blur to the gamma corrected currentFrame
+        cv::GaussianBlur(gammaCorrectedFrame, gammaCorrectedFrame, cv::Size(blurKernelSize, blurKernelSize), 0);
 
-        cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
+
+        output_frame = gammaCorrectedFrame.clone();
+
+        cv::resize(gammaCorrectedFrame, gammaCorrectedFrame, cv::Size(), scale_factor, scale_factor, cv::INTER_AREA);
+
+        cv::cvtColor(gammaCorrectedFrame, gammaCorrectedFrame, cv::COLOR_BGR2GRAY);
 
         double scale = 0;
         std::vector<cv::Rect> detections;
         std::vector<double> scores;
 
-        std::vector<cv::Mat> pyramid = generateImagePyramid(frame, 8);
+        std::vector<cv::Mat> pyramid = generateImagePyramid(gammaCorrectedFrame, 8, downscale, size);
 
+        int pyi = 0;
         for (const auto &scaledFrame: pyramid) {
+
+            imshow("pyramid " + std::to_string(pyi), scaledFrame);
+            pyi++;
 
             for (const auto &window: sliding_window(scaledFrame, size, stepSize)) {
 
                 Eigen::MatrixXd eigen_window;
-                cv::cv2eigen(frame(window), eigen_window);
+                cv::cv2eigen(gammaCorrectedFrame(window), eigen_window);
 
                 Eigen::MatrixXd descriptors = computeHOG(eigen_window);
 
@@ -149,39 +183,57 @@ int main() {
 
                 cv::Mat descriptorsMatReshaped = descriptors_mat.reshape(1, 1);
 
-                cv::Mat predMat;
+                cv::Mat predMat_inria;
+                model_inria->predict(descriptorsMatReshaped, predMat_inria);
 
-                model->predict(descriptorsMatReshaped, predMat);
+                float pred_inria = predMat_inria.at<float>(0, 0);
+                if (pred_inria == 1) {
+                    cv::Mat decisionMat_inria;
+                    model_inria->predict(descriptorsMatReshaped, decisionMat_inria, cv::ml::StatModel::RAW_OUTPUT);
 
-                float pred = predMat.at<float>(0, 0);
-                if (pred == 1) {
-                    cv::Mat decisionMat;
-                    model->predict(descriptorsMatReshaped, decisionMat, cv::ml::StatModel::RAW_OUTPUT);
+                    double decision_inria = decisionMat_inria.at<double>(0, 0);
 
-                    double decision = decisionMat.at<double>(0, 0);
+                    decision_inria = clip(normalize(decision_inria, 1.56338e-314, 1.58213e-314), 0.0, 1.0);
 
-                    decision = clip(normalize(decision, 1.56338e-314, 1.58213e-314), 0.0, 1.0);
+//                    cout << "decision_inria: " << decision_inria << endl;
+                    if (decision_inria > 0.9) {
 
-//                    cout << decision << endl;
-                    if (decision > detection_threshold) {
-                        double temp = pow(downscale, scale);
-                        int x_orig = (int) (window.x * temp / scale_factor);
-                        int y_orig = (int) (window.y * temp / scale_factor);
-                        int w_orig = (int) (size.width * temp / scale_factor);
-                        int h_orig = (int) (size.height * temp / scale_factor);
+                        cv::Mat predMat_tt;
+                        model_inria->predict(descriptorsMatReshaped, predMat_tt);
+
+                        float pred_tt = predMat_tt.at<float>(0, 0);
+
+                        if (pred_tt == 1) {
+                            cv::Mat decisionMat_tt;
+                            model_tt->predict(descriptorsMatReshaped, decisionMat_tt, cv::ml::StatModel::RAW_OUTPUT);
+
+                            double decision_tt = decisionMat_tt.at<double>(0, 0);
+
+                            decision_tt = clip(normalize(decision_tt, 1.56338e-315, 1.58213e-314), 0.0, 1.0);
+//                            cout << "decision_tt: " << decision_tt << endl;
+                            if (decision_tt > 0.7) {
+
+                                double temp = pow(downscale, scale);
+                                int x_orig = (int) (window.x * temp / scale_factor);
+                                int y_orig = (int) (window.y * temp / scale_factor);
+                                int w_orig = (int) (size.width * temp / scale_factor);
+                                int h_orig = (int) (size.height * temp / scale_factor);
 
 
-                        detections.push_back(cv::Rect(x_orig, y_orig, w_orig, h_orig));
-                        scores.push_back(decision);
+                                detections.push_back(cv::Rect(x_orig, y_orig, w_orig, h_orig));
 
+                                double decision = (decision_inria + decision_tt) / 2;
+                                scores.push_back(decision);
+
+                            }
+                        }
                     }
                 }
             }
             scale++;
         }
 
-        std::vector<cv::Rect> picked;
-        picked = non_max_suppression(detections, scores, overlap_threshold);
+        std::vector<cv::Rect> picked = non_max_suppression(detections, scores, overlap_threshold);
 
         // Update Kalman filters with new detections
         for (size_t i = 0; i < picked.size(); ++i) {
@@ -196,8 +248,10 @@ int main() {
                 if (overlap.area() > 0) {
                     foundMatch = true;
 
+
                     cv::KalmanFilter &kf = objectKalmanFilters[obj.first];
-                    cv::Mat measurement = (cv::Mat_<float>(2, 1) << rect.x + rect.width / 2, rect.y + rect.height / 2);
+                    cv::Mat measurement = (cv::Mat_<float>(2, 1) << rect.x + rect.width / 2, rect.y +
+                                                                                             rect.height / 2);
                     cv::Mat prediction = kf.predict();
                     cv::Mat estimated = kf.correct(measurement);
 
@@ -208,7 +262,8 @@ int main() {
                     objectRects[obj.first] = estimatedRect;
 
                     cv::rectangle(output_frame, estimatedRect, cv::Scalar(0, 255, 0), 2);
-                    cv::putText(output_frame, "ID: " + std::to_string(obj.first) + " Score: " + std::to_string(score),
+                    cv::putText(output_frame,
+                                "ID: " + std::to_string(obj.first) + " Score: " + std::to_string(score),
                                 cv::Point(estimatedRect.x, estimatedRect.y - 5),
                                 cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0, 255, 0), 2);
 
@@ -217,6 +272,7 @@ int main() {
             }
 
             if (!foundMatch) {
+
                 // Initialize Kalman filter for new object
                 cv::KalmanFilter kf(4, 2);
                 kf.transitionMatrix = (cv::Mat_<float>(4, 4) << 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1);
@@ -232,7 +288,8 @@ int main() {
                 objectRects[nextObjectID] = rect;
 
                 cv::rectangle(output_frame, rect, cv::Scalar(0, 255, 0), 2);
-                cv::putText(output_frame, "ID: " + std::to_string(nextObjectID) + " Score: " + std::to_string(score),
+                cv::putText(output_frame,
+                            "ID: " + std::to_string(nextObjectID) + " Score: " + std::to_string(score),
                             cv::Point(rect.x, rect.y - 5),
                             cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0, 255, 0), 2);
 
@@ -305,30 +362,33 @@ int main() {
 //
 //int main() {
 //
-//    Size sample_size = Size(64, 128);
-//    int limit = 500;
+//    Size sample_size = Size(96, 160);
+//    int limit = 1000;
 ////    Size sample_size = Size(64,128);
 //    // Load positive samples (e.g., pedestrian images) from INRIA dataset
 //    std::vector<String> posFilesJPG, posFiles, tiktokPos, tiktokNeg;
 ////    cv::glob("/Users/louis/Downloads/INRIAPerson/Train/pos/*.png", posFilesPNG);
-//    cv::glob("/Users/louis/PycharmProjects/cv_project/src/cv/svm/output_96_160/*.jpg", posFilesJPG);
+////    cv::glob("/Users/louis/PycharmProjects/cv_project/src/cv/svm/output_96_160/*.jpg", posFilesJPG);
 //    tiktokPos = getImagePaths("/Users/louis/PycharmProjects/ki/cv/new_positive", limit);
 //
 //
 ////    posFiles.insert(posFiles.end(), posFilesPNG.begin(), posFilesPNG.end());
-//    posFiles.insert(posFiles.end(), posFilesJPG.begin(), posFilesJPG.end());
+////    posFiles.insert(posFiles.end(), posFilesJPG.begin(), posFilesJPG.end());
 //    posFiles.insert(posFiles.end(), tiktokPos.begin(), tiktokPos.end());
 //
 //
 //    // Load negative samples (e.g., non-pedestrian images) from INRIA dataset
 //    std::vector<String> negFilesPNG, negFilesJPG, negFiles;
-//    glob("/Users/louis/Downloads/INRIAPerson/Train/neg/*.png", negFilesPNG); // PNG format
-//    glob("/Users/louis/Downloads/INRIAPerson/Train/neg/*.jpg", negFilesJPG); // JPG format
+////    glob("/Users/louis/Downloads/INRIAPerson/Train/neg/*.png", negFilesPNG); // PNG format
+////    glob("/Users/louis/Downloads/INRIAPerson/Train/neg/*.jpg", negFilesJPG); // JPG format
 //    tiktokNeg = getImagePaths("/Users/louis/PycharmProjects/cv_project/dataset/negative", limit);
-//
-//    negFiles.insert(negFiles.end(), negFilesPNG.begin(), negFilesPNG.end());
-//    negFiles.insert(negFiles.end(), negFilesJPG.begin(), negFilesJPG.end());
+////
+////    negFiles.insert(negFiles.end(), negFilesPNG.begin(), negFilesPNG.end());
+////    negFiles.insert(negFiles.end(), negFilesJPG.begin(), negFilesJPG.end());
 //    negFiles.insert(negFiles.end(), tiktokNeg.begin(), tiktokNeg.end());
+//
+//    std::cout << posFiles.size() << std::endl;
+//    std::cout << negFiles.size() << std::endl;
 //
 //
 //    std::random_device rd;
@@ -460,7 +520,7 @@ int main() {
 //    svm->train(trainData, ROW_SAMPLE, labelsMat);
 //
 //    // Save trained SVM model to a file
-//    svm->save("svm_model_inria+tt_64_128_with_flipped.xml");
+//    svm->save("svm_model_tt_96_160_with_flipped_1000.xml");
 //
 //    return 0;
 //}
