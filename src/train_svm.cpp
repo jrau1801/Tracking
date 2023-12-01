@@ -207,7 +207,7 @@
 //    svm->train(trainData, ROW_SAMPLE, labelsMat);
 //
 //    // Save trained SVM model to a file
-//    svm->save("svm_model_inria+tt_96_160_with_flipped.xml");
+//    svm->save("svm_model_inria+tt_96_160_with_flipped_2.xml");
 //
 //    return 0;
 //}
