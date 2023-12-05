@@ -1,6 +1,7 @@
 #include <opencv2/opencv.hpp>
 #include <cstdlib>
-#include <ctime>
+#include <chrono>
+#include <thread>
 using namespace cv;
 
 int main() {
@@ -22,12 +23,7 @@ int main() {
     int height = cap.get(CAP_PROP_FRAME_HEIGHT);
     int width = cap.get(CAP_PROP_FRAME_WIDTH);
 
-    // Generate a random x-coordinate for the fourth bounding box
-    srand(static_cast<unsigned int>(time(0)));
-    int randomX = rand() % (width - (width / 3)); // Random x-value within the frame width
 
-    // Fourth bounding box coordinates
-    Rect boundingBox(800, height /4, width / 3, height / 2);
 
     while (true) {
         Mat frame;
@@ -37,6 +33,10 @@ int main() {
             std::cout << "No frame captured from camera" << std::endl;
             break;
         }
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        int randomX = rand() % (width - (width / 3)); // Random x-value within the frame width
+        Rect boundingBox(randomX, height / 4, width / 3, height / 2);
 
         // Split the frame into three equal sections
         Rect section1(0, 0, width / 3, height);
