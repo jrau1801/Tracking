@@ -26,6 +26,7 @@ add_executable(Tracking
         include/HOG.h
         src/train_svm.cpp
         include/Detection.h
+        src/cam_sections.cpp
 )
 target_link_libraries(Tracking PRIVATE ${OpenCV_LIBS})
 

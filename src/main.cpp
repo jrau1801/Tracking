@@ -93,7 +93,7 @@ Eigen::MatrixXd computeHOG(Eigen::MatrixXd image) {
     return res.first;
 }
 
-
+/*
 int main() {
 
     cv::VideoCapture cap(0);
@@ -315,6 +315,7 @@ int main() {
 
     return 0;
 }
+*/
 
 
 // Created by Louis-Kaan Ay on 29.11.23.
