@@ -78,13 +78,13 @@ std::vector<cv::Mat> generateImagePyramid(const cv::Mat &frame, const size_t num
     return pyramid;
 }
 
-double clip(double value, double minValue, double maxValue) {
-    return (value < minValue) ? minValue : (value > maxValue) ? maxValue : value;
-}
-
-double normalize(double value, double minVal, double maxVal) {
-    return (value - minVal) / (maxVal - minVal);
-}
+//double clip(double value, double minValue, double maxValue) {
+//    return (value < minValue) ? minValue : (value > maxValue) ? maxValue : value;
+//}
+//
+//double normalize(double value, double minVal, double maxVal) {
+//    return (value - minVal) / (maxVal - minVal);
+//}
 
 
 Eigen::MatrixXd computeHOG(Eigen::MatrixXd image) {
@@ -168,7 +168,7 @@ int main() {
         std::vector<cv::Rect> detections;
         std::vector<double> scores;
 
-        std::vector<cv::Mat> pyramid = generateImagePyramid(gammaCorrectedFrame, 8, downscale, size);
+        std::vector<cv::Mat> pyramid = generateImagePyramid(gammaCorrectedFrame, 5, downscale, size);
 
         int pyi = 0;
         for (const auto &scaledFrame: pyramid) {
