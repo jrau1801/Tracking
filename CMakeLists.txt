@@ -7,6 +7,8 @@ find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+message("Opencv: ${OpenCV_INCLUDE_DIRS}")
+
 set(CMAKE_CXX_STANDARD 23)
 
 add_executable(Tracking
@@ -17,6 +19,7 @@ add_executable(Tracking
         src/train_svm.cpp
         include/Detection.h
 )
+
 
 
 target_link_libraries(Tracking LINK_PUBLIC Eigen3::Eigen ${OpenCV_LIBS})
