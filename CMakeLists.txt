@@ -18,6 +18,11 @@ add_executable(Tracking
         include/HOG.h
         src/train_svm.cpp
         include/Detection.h
+        include/SlidingWindow.h
+        include/NonMaxSuppression.h
+        include/ImagePyramid.h
+        include/HOGDescriptor.h
+        include/PersonDetector.h
 )
 
 

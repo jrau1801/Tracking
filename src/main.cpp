@@ -10,7 +10,9 @@
 #include <numeric>
 #include <opencv2/bgsegm.hpp>
 
-#include "../include/HOG.h"
+#include "../include/HOGDescriptor.h"
+#include "../include/PersonDetector.h"
+
 
 using std::cout;
 using std::endl;
@@ -21,77 +23,18 @@ using cv::imshow;
 using cv::waitKey;
 using cv::destroyAllWindows;
 
-std::vector<cv::Rect> sliding_window(const cv::Mat &image, cv::Size windowSize, cv::Size stepSize) {
-    std::vector<cv::Rect> windows;
-    for (int y = 0; y < image.rows - windowSize.height; y += stepSize.height) {
-        for (int x = 0; x < image.cols - windowSize.width; x += stepSize.width) {
-            windows.push_back(cv::Rect(x, y, windowSize.width, windowSize.height));
-        }
-    }
-    return windows;
-}
 
-std::vector<cv::Rect>
-non_max_suppression(const std::vector<cv::Rect> &rects, const std::vector<double> &scores, float overlapThresh) {
-    std::vector<cv::Rect> picked;
-    std::vector<int> indices(rects.size());
-    std::iota(indices.begin(), indices.end(), 0);
-
-    std::sort(indices.begin(), indices.end(), [&scores](int a, int b) { return scores[a] > scores[b]; });
-
-    while (!indices.empty()) {
-        int current_idx = indices.front();
-        picked.push_back(rects[current_idx]);
-        indices.erase(indices.begin());
-
-        std::vector<int> indices_to_remove;
-        for (size_t i = 0; i < indices.size(); ++i) {
-            int idx = indices[i];
-            float intersection_area = (rects[current_idx] & rects[idx]).area();
-            float union_area = rects[current_idx].area() + rects[idx].area() - intersection_area;
-            float overlap = intersection_area / union_area;
-
-            if (overlap > overlapThresh)
-                indices_to_remove.push_back(i);
-        }
-
-        for (int i = indices_to_remove.size() - 1; i >= 0; --i) {
-            indices.erase(indices.begin() + indices_to_remove[i]);
-        }
-    }
-
-    return picked;
-}
-
-std::vector<cv::Mat>
-generateImagePyramid(const cv::Mat &frame, const size_t numScales, const double downscale, const cv::Size minSize) {
-    std::vector<cv::Mat> pyramid;
-    cv::Mat scaledFrame = frame.clone();
-    for (int i = 0; i < numScales; ++i) {
-        if (minSize.height > scaledFrame.rows || minSize.width > scaledFrame.cols) {
-            break;
-        }
-        pyramid.push_back(scaledFrame.clone());
-        cv::resize(scaledFrame, scaledFrame, cv::Size(), 1 / downscale,
-                   1 / downscale); // Resizing with a scale factor of 0.75}
-    }
-    return pyramid;
-}
-
-double clip(double value, double minValue, double maxValue) {
-    return (value < minValue) ? minValue : (value > maxValue) ? maxValue : value;
-}
-
-double normalize(double value, double minVal, double maxVal) {
-    return (value - minVal) / (maxVal - minVal);
-}
-
-
-Eigen::MatrixXd computeHOG(Eigen::MatrixXd image) {
-    std::pair<Eigen::MatrixXd, Eigen::MatrixXd> res = HOG::compute(image, 9, std::make_pair(8, 8), std::make_pair(3, 3),
-                                                                   cv::NORM_L2, false, false, true);
-    return res.first;
-}
+/**
+ * @brief Wrapper method for HOG::compute - Computes Histogram of Oriented Gradients (HOG) descriptors for the given image.
+ *
+ * @param image Input image.
+ * @return Matrix containing HOG descriptors.
+ */
+//Eigen::MatrixXd computeHOG(Eigen::MatrixXd image) {
+//    std::pair<Eigen::MatrixXd, Eigen::MatrixXd> res = HOG::compute(image, 9, std::make_pair(8, 8), std::make_pair(3, 3),
+//                                                                   cv::NORM_L2, false, false, true, true);
+//    return res.first;
+//}
 
 
 int main() {
@@ -103,47 +46,19 @@ int main() {
 
     cv::Mat currentFrame, output_frame;
 
-    cv::Ptr<cv::ml::SVM> model_inria;
-    cv::Ptr<cv::ml::SVM> model_tt;
-    try {
-        model_inria = cv::ml::SVM::load(
-                "../models/svm_model_inria_96_160_with_flipped.xml");
 
-        model_tt = cv::ml::SVM::load(
-                "../models/svm_model_tt_96_160_with_flipped_1000.xml");
-    } catch (cv::Exception &e) {
-        std::cerr << "OpenCV error: " << e.what() << std::endl;
-    }
-
-    const int cameraWidth = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
-    const int cameraHeight = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+    HOGDescriptor hogDescriptor(9, std::make_pair(8, 8), std::make_pair(3, 3), cv::NORM_L2, false, false, true, true);
 
 
-    const cv::Size camera_frame_input_size(cameraWidth, cameraHeight);
     const double scale_factor = 0.19;
-    const cv::Size fixedFrameSize(static_cast<int>(round(camera_frame_input_size.width * scale_factor)),
-                                  static_cast<int>(round(camera_frame_input_size.height * scale_factor))); // (365, 205)
-    cv::Mat tempFrame = cv::Mat::zeros(fixedFrameSize, CV_8UC1);
+    const cv::Size fixedFrameSize(365, 205); // (365, 205)
 
     const cv::Size size(96, 160);
     const cv::Size stepSize(10, 10); //(10,10)
-    const double detection_threshold = 0.9;
-    const float overlap_threshold = 0.2 ;
+    const double detection_threshold_1 = 0.8; // inria
+    const double detection_threshold_2 = 0.7; // tt
+    const float overlap_threshold = 0.2;
     const double downscale = 1.15;
-
-
-    // precompute sliding window rects
-    std::vector<cv::Mat> pyramid = generateImagePyramid(tempFrame, 8, downscale, size);
-
-    std::vector<std::vector<cv::Rect>> sliding_windows;
-
-    for (const auto &scaledFrame: pyramid) {
-        std::vector<cv::Rect> scale_windows;
-        for (const auto &window: sliding_window(scaledFrame, size, stepSize)) {
-            scale_windows.push_back(window);
-        }
-        sliding_windows.push_back(scale_windows);
-    }
 
     const double gamma = 1.5;
     const int blurKernelSize = 5;
@@ -151,6 +66,10 @@ int main() {
     int nextObjectID = 0;
     std::map<int, cv::KalmanFilter> objectKalmanFilters;
     std::map<int, cv::Rect> objectRects;
+
+    PersonDetector personDetector("../models/svm_model_inria_96_160_with_flipped.xml", "../models/svm_model_tt_96_160_with_flipped_1000.xml",hogDescriptor, scale_factor, size, stepSize, detection_threshold_1, detection_threshold_2, overlap_threshold, downscale);
+
+
 
     while (true) {
         cap.read(currentFrame);
@@ -177,78 +96,10 @@ int main() {
 
         cv::cvtColor(gammaCorrectedFrame, gammaCorrectedFrame, cv::COLOR_BGR2GRAY);
 
-        double scale = 0;
-        std::vector<cv::Rect> detections;
-        std::vector<double> scores;
-
-        for (const auto &scale_windows: sliding_windows) {
-            for (const auto &window: scale_windows) {
-
-                Eigen::MatrixXd eigen_window;
-                cv::cv2eigen(gammaCorrectedFrame(window), eigen_window);
-
-                Eigen::MatrixXd descriptors = computeHOG(eigen_window);
-
-                cv::Mat descriptors_mat;
-                cv::eigen2cv(descriptors, descriptors_mat);
-
-                descriptors_mat.convertTo(descriptors_mat,
-                                          CV_32F); // Todo change in HOG::compute that features are returned as CV_32F if possible
-
-                cv::Mat descriptorsMatReshaped = descriptors_mat.reshape(1, 1);
-
-                cv::Mat predMat_inria;
-                model_inria->predict(descriptorsMatReshaped, predMat_inria);
-
-                float pred_inria = predMat_inria.at<float>(0, 0);
-                if (pred_inria == 1) {
-                    cv::Mat decisionMat_inria;
-                    model_inria->predict(descriptorsMatReshaped, decisionMat_inria, cv::ml::StatModel::RAW_OUTPUT);
-
-                    float decision_inria = decisionMat_inria.at<float>(0,0);
-
-                    cout << decision_inria << endl;
-
-//                    decision_inria = clip(normalize(decision_inria, 1.56338e-314, 1.58213e-314), 0.0, 1.0);
-
-//                    cout << "decision_inria: " << decision_inria << endl;
-                    if (abs(decision_inria) < 0.2) {
-
-                        cv::Mat predMat_tt;
-                        model_inria->predict(descriptorsMatReshaped, predMat_tt);
-
-                        float pred_tt = predMat_tt.at<float>(0, 0);
-
-                        if (pred_tt == 1) {
-                            cv::Mat decisionMat_tt;
-                            model_tt->predict(descriptorsMatReshaped, decisionMat_tt, cv::ml::StatModel::RAW_OUTPUT);
-
-                            double decision_tt = decisionMat_tt.at<double>(0, 0);
-
-//                            decision_tt = clip(normalize(decision_tt, 1.56338e-315, 1.58213e-314), 0.0, 1.0);
-                            if (abs(decision_tt) < 0.3) {
-
-                                double temp = pow(downscale, scale);
-                                int x_orig = (int) (window.x * temp / scale_factor);
-                                int y_orig = (int) (window.y * temp / scale_factor);
-                                int w_orig = (int) (size.width * temp / scale_factor);
-                                int h_orig = (int) (size.height * temp / scale_factor);
 
 
-                                detections.push_back(cv::Rect(x_orig, y_orig, w_orig, h_orig));
-
-                                double decision = (decision_inria + decision_tt) / 2;
-                                scores.push_back(decision);
-
-                            }
-                        }
-                    }
-                }
-            }
-            scale++;
-        }
-
-        std::vector<cv::Rect> picked = non_max_suppression(detections, scores, overlap_threshold);
+        std::pair<std::vector<cv::Rect>, std::vector<float>> res = personDetector.detect(gammaCorrectedFrame);
+        std::vector<cv::Rect> picked = res.first;
 //
 //        std::vector<cv::Rect> mergedBoxes;
 //        double mergeThreshold = 0.3; // Adjust this IoU threshold based on your requirements
