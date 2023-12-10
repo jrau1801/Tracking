@@ -187,7 +187,7 @@ public:
             }
         }
 
-        return std::make_pair<float, float>(1.0, 0.0); // Default return if conditions are not met
+        return std::make_pair<float, float>(0.0, 0.0); // Default return if conditions are not met
     }
 
 

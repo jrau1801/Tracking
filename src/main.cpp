@@ -23,19 +23,33 @@ using cv::imshow;
 using cv::waitKey;
 using cv::destroyAllWindows;
 
+cv::Mat trackOpticalFlow(cv::Mat prevGray, cv::Mat frame, cv::Point2f& prevDot, cv::Rect& bbox) {
+    cv::Mat gray;
+    cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
 
-/**
- * @brief Wrapper method for HOG::compute - Computes Histogram of Oriented Gradients (HOG) descriptors for the given image.
- *
- * @param image Input image.
- * @return Matrix containing HOG descriptors.
- */
-//Eigen::MatrixXd computeHOG(Eigen::MatrixXd image) {
-//    std::pair<Eigen::MatrixXd, Eigen::MatrixXd> res = HOG::compute(image, 9, std::make_pair(8, 8), std::make_pair(3, 3),
-//                                                                   cv::NORM_L2, false, false, true, true);
-//    return res.first;
-//}
+    cv::Point2f dotCenter((bbox.x + bbox.width) / 2.0f, (bbox.y + bbox.height) / 2.0f);
 
+    std::vector<cv::Point2f> prevPoints, nextPoints;
+    prevPoints.push_back(prevDot);
+
+    std::vector<uchar> status;
+    std::vector<float> err;
+
+    cv::calcOpticalFlowPyrLK(prevGray, gray, prevPoints, nextPoints, status, err);
+
+    if (!status.empty() && status[0]) {
+        prevDot = nextPoints[0];
+    }
+
+    cv::Point2f movement = prevDot - dotCenter;
+
+    bbox.x += static_cast<int>(movement.x);
+    bbox.y += static_cast<int>(movement.y);
+    bbox.width += static_cast<int>(movement.x);
+    bbox.height += static_cast<int>(movement.y);
+
+    return gray.clone();
+}
 
 int main() {
     cv::VideoCapture cap(0);
@@ -57,7 +71,7 @@ int main() {
     const cv::Size stepSize(10, 10); //(10,10)
     const double detection_threshold_1 = 0.8; // inria
     const double detection_threshold_2 = 0.7; // tt
-    const float overlap_threshold = 0.2;
+    const float overlap_threshold = 0.3;
     const double downscale = 1.15;
 
     const double gamma = 1.5;
