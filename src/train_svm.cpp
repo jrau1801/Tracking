@@ -1,5 +1,5 @@
-
-// Created by Louis-Kaan Ay on 29.11.23.
+//
+//// Created by Louis-Kaan Ay on 29.11.23.
 //#include <algorithm>
 //#include <opencv2/opencv.hpp>
 //#include <opencv2/ml.hpp>
@@ -51,13 +51,13 @@
 //int main() {
 //
 //    Size sample_size = Size(96, 160);
-//    int limit = 1000;
+//    int limit = 5000;
 ////    Size sample_size = Size(64,128);
 //    // Load positive samples (e.g., pedestrian images) from INRIA dataset
 //    std::vector<String> posFilesJPG, posFiles, tiktokPos, tiktokNeg;
 ////    cv::glob("/Users/louis/Downloads/INRIAPerson/Train/pos/*.png", posFilesPNG);
 ////    cv::glob("/Users/louis/PycharmProjects/cv_project/src/cv/svm/output_96_160/*.jpg", posFilesJPG);
-//    tiktokPos = getImagePaths("/Users/louis/PycharmProjects/ki/cv/new_positive", limit);
+//    tiktokPos = getImagePaths("/Users/louis/PycharmProjects/ki/cv/positive_cropped", limit + 1000);
 //
 //
 ////    posFiles.insert(posFiles.end(), posFilesPNG.begin(), posFilesPNG.end());
@@ -98,37 +98,37 @@
 //        cvtColor(img, img, COLOR_BGR2GRAY);
 //        resize(img, img, sample_size);
 //
-//        Mat flipped_image;
-//        cv::flip(img, flipped_image, 1);
+////        Mat flipped_image;
+////        cv::flip(img, flipped_image, 1);
 //
 //        Eigen::MatrixXd eigen_image, eigen_image_flipped;
 //        cv::cv2eigen(img, eigen_image);
-//        cv::cv2eigen(flipped_image, eigen_image_flipped);
+////        cv::cv2eigen(flipped_image, eigen_image_flipped);
 //
 //        // Extract HOG features from the image
 //        std::pair<Eigen::MatrixXd, Eigen::MatrixXd> hogFeatures_1 = HOG::compute(eigen_image, 9, std::make_pair(8, 8),
 //                                                                                 std::make_pair(3, 3),
 //                                                                                 cv::NORM_L2, false, false, true, true);
-//        std::pair<Eigen::MatrixXd, Eigen::MatrixXd> hogFeatures_2 = HOG::compute(eigen_image_flipped, 9,
-//                                                                                 std::make_pair(8, 8),
-//                                                                                 std::make_pair(3, 3),
-//                                                                                 cv::NORM_L2, false, false, true, true);
+////        std::pair<Eigen::MatrixXd, Eigen::MatrixXd> hogFeatures_2 = HOG::compute(eigen_image_flipped, 9,
+////                                                                                 std::make_pair(8, 8),
+////                                                                                 std::make_pair(3, 3),
+////                                                                                 cv::NORM_L2, false, false, true, true);
 //
 //        // Convert HOG features to OpenCV Mat
 //        Mat hogMat, hogMatFlipped;
 //        cv::eigen2cv(hogFeatures_1.first, hogMat);
-//        cv::eigen2cv(hogFeatures_2.first, hogMatFlipped);
+////        cv::eigen2cv(hogFeatures_2.first, hogMatFlipped);
 //
 //        // Reshape the HOG Mat to a single row and append to trainData
 //        hogMat = hogMat.reshape(1, 1); // Reshape to a single row matrix
-//        hogMatFlipped = hogMatFlipped.reshape(1, 1); // Reshape to a single row matrix
+////        hogMatFlipped = hogMatFlipped.reshape(1, 1); // Reshape to a single row matrix
 //
 //        trainData.push_back(hogMat);
-//        trainData.push_back(hogMatFlipped);
+////        trainData.push_back(hogMatFlipped);
 //
 //
 //        labels.push_back(1);
-//        labels.push_back(1);
+////        labels.push_back(1);
 //
 //    }
 //
@@ -140,37 +140,37 @@
 //        cvtColor(img, img, COLOR_BGR2GRAY);
 //        resize(img, img, sample_size);
 //
-//        Mat flipped_image;
-//        cv::flip(img, flipped_image, 1);
+////        Mat flipped_image;
+////        cv::flip(img, flipped_image, 1);
 //
 //        Eigen::MatrixXd eigen_image, eigen_image_flipped;
 //        cv::cv2eigen(img, eigen_image);
-//        cv::cv2eigen(flipped_image, eigen_image_flipped);
+////        cv::cv2eigen(flipped_image, eigen_image_flipped);
 //
 //        // Extract HOG features from the image
 //        std::pair<Eigen::MatrixXd, Eigen::MatrixXd> hogFeatures_1 = HOG::compute(eigen_image, 9, std::make_pair(8, 8),
 //                                                                                 std::make_pair(3, 3),
 //                                                                                 cv::NORM_L2, false, false, true, true);
-//        std::pair<Eigen::MatrixXd, Eigen::MatrixXd> hogFeatures_2 = HOG::compute(eigen_image_flipped, 9,
-//                                                                                 std::make_pair(8, 8),
-//                                                                                 std::make_pair(3, 3),
-//                                                                                 cv::NORM_L2, false, false, true, true);
+////        std::pair<Eigen::MatrixXd, Eigen::MatrixXd> hogFeatures_2 = HOG::compute(eigen_image_flipped, 9,
+////                                                                                 std::make_pair(8, 8),
+////                                                                                 std::make_pair(3, 3),
+////                                                                                 cv::NORM_L2, false, false, true, true);
 //
 //        // Convert HOG features to OpenCV Mat
 //        Mat hogMat, hogMatFlipped;
 //        cv::eigen2cv(hogFeatures_1.first, hogMat);
-//        cv::eigen2cv(hogFeatures_2.first, hogMatFlipped);
+////        cv::eigen2cv(hogFeatures_2.first, hogMatFlipped);
 //
 //        // Reshape the HOG Mat to a single row and append to trainData
 //        hogMat = hogMat.reshape(1, 1); // Reshape to a single row matrix
-//        hogMatFlipped = hogMatFlipped.reshape(1, 1); // Reshape to a single row matrix
+////        hogMatFlipped = hogMatFlipped.reshape(1, 1); // Reshape to a single row matrix
 //
 //        trainData.push_back(hogMat);
-//        trainData.push_back(hogMatFlipped);
+////        trainData.push_back(hogMatFlipped);
 //
 //
 //        labels.push_back(0);
-//        labels.push_back(0);
+////        labels.push_back(0);
 //    }
 //
 //    // Convert labels to Mat
@@ -208,7 +208,7 @@
 //    svm->train(trainData, ROW_SAMPLE, labelsMat);
 //
 //    // Save trained SVM model to a file
-//    svm->save("svm_model_tt_96_160_with_flipped_1000.xml");
+//    svm->save("svm_model_tt_96_160_with_cropped_5000.xml");
 //
 //    return 0;
 //}

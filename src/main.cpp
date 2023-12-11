@@ -70,7 +70,7 @@ int main() {
     const cv::Size size(96, 160);
     const cv::Size stepSize(10, 10); //(10,10)
     const double detection_threshold_1 = 0.8; // inria
-    const double detection_threshold_2 = 0.7; // tt
+    const double detection_threshold_2 = 0.9; // tt
     const float overlap_threshold = 0.3;
     const double downscale = 1.15;
 
@@ -81,7 +81,9 @@ int main() {
     std::map<int, cv::KalmanFilter> objectKalmanFilters;
     std::map<int, cv::Rect> objectRects;
 
-    PersonDetector personDetector("../models/svm_model_inria_96_160_with_flipped.xml", "../models/svm_model_tt_96_160_with_flipped_1000.xml",hogDescriptor, scale_factor, size, stepSize, detection_threshold_1, detection_threshold_2, overlap_threshold, downscale);
+//    "../models/svm_model_tt_96_160_with_flipped_1000.xml"
+
+    PersonDetector personDetector("../models/svm_model_inria_96_160_with_flipped.xml","../models/svm_model_tt_96_160_with_cropped_2000.xml",hogDescriptor, scale_factor, size, stepSize, detection_threshold_1, detection_threshold_2, overlap_threshold, downscale);
 
 
 
