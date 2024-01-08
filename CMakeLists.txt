@@ -23,6 +23,8 @@ add_executable(Tracking
         include/ImagePyramid.h
         include/HOGDescriptor.h
         include/PersonDetector.h
+        include/PersonTracker.h
+        include/Track.h
 )
 
 

@@ -51,28 +51,28 @@
 //int main() {
 //
 //    Size sample_size = Size(96, 160);
-//    int limit = 5000;
+//    int limit = 2000;
 ////    Size sample_size = Size(64,128);
 //    // Load positive samples (e.g., pedestrian images) from INRIA dataset
 //    std::vector<String> posFilesJPG, posFiles, tiktokPos, tiktokNeg;
 ////    cv::glob("/Users/louis/Downloads/INRIAPerson/Train/pos/*.png", posFilesPNG);
-////    cv::glob("/Users/louis/PycharmProjects/cv_project/src/cv/svm/output_96_160/*.jpg", posFilesJPG);
-//    tiktokPos = getImagePaths("/Users/louis/PycharmProjects/ki/cv/positive_cropped", limit + 1000);
+//    cv::glob("/Users/louis/PycharmProjects/ki/cv/hog_svm_dataset/inria/train/cropped_persons/output_96_160*.jpg", posFilesJPG);
+//    tiktokPos = getImagePaths("/Users/louis/PycharmProjects/ki/cv/hog_svm_dataset/tiktok/train/positive_cropped", limit + 1000);
 //
 //
 ////    posFiles.insert(posFiles.end(), posFilesPNG.begin(), posFilesPNG.end());
-////    posFiles.insert(posFiles.end(), posFilesJPG.begin(), posFilesJPG.end());
+//    posFiles.insert(posFiles.end(), posFilesJPG.begin(), posFilesJPG.end());
 //    posFiles.insert(posFiles.end(), tiktokPos.begin(), tiktokPos.end());
 //
 //
 //    // Load negative samples (e.g., non-pedestrian images) from INRIA dataset
 //    std::vector<String> negFilesPNG, negFilesJPG, negFiles;
-////    glob("/Users/louis/Downloads/INRIAPerson/Train/neg/*.png", negFilesPNG); // PNG format
-////    glob("/Users/louis/Downloads/INRIAPerson/Train/neg/*.jpg", negFilesJPG); // JPG format
-//    tiktokNeg = getImagePaths("/Users/louis/PycharmProjects/cv_project/dataset/negative", limit);
+//    glob("/Users/louis/PycharmProjects/ki/cv/hog_svm_dataset/inria/train/original/neg/*.png", negFilesPNG); // PNG format
+//    glob("/Users/louis/PycharmProjects/ki/cv/hog_svm_dataset/inria/train/original/neg/*.jpg", negFilesJPG); // JPG format
+//    tiktokNeg = getImagePaths("/Users/louis/PycharmProjects/ki/cv/hog_svm_dataset/tiktok/train/negative", limit);
 ////
-////    negFiles.insert(negFiles.end(), negFilesPNG.begin(), negFilesPNG.end());
-////    negFiles.insert(negFiles.end(), negFilesJPG.begin(), negFilesJPG.end());
+//    negFiles.insert(negFiles.end(), negFilesPNG.begin(), negFilesPNG.end());
+//    negFiles.insert(negFiles.end(), negFilesJPG.begin(), negFilesJPG.end());
 //    negFiles.insert(negFiles.end(), tiktokNeg.begin(), tiktokNeg.end());
 //
 //    std::cout << posFiles.size() << std::endl;
@@ -208,7 +208,7 @@
 //    svm->train(trainData, ROW_SAMPLE, labelsMat);
 //
 //    // Save trained SVM model to a file
-//    svm->save("svm_model_tt_96_160_with_cropped_5000.xml");
+//    svm->save("svm_model_inria+tt_96_160_with_cropped_3pK_2nk_tt.xml");
 //
 //    return 0;
 //}
